@@ -31,6 +31,7 @@ import proguard.configuration.InitialStateInfo;
 import proguard.evaluation.IncompleteClassHierarchyException;
 import proguard.logging.Logging;
 import proguard.mark.Marker;
+import proguard.normalize.StringNormalizer;
 import proguard.obfuscate.NameObfuscationReferenceFixer;
 import proguard.obfuscate.ObfuscationPreparation;
 import proguard.obfuscate.Obfuscator;
@@ -48,13 +49,11 @@ import proguard.strip.KotlinAnnotationStripper;
 import proguard.util.ConstantMatcher;
 import proguard.util.ListParser;
 import proguard.util.NameParser;
-import proguard.util.PrintWriterUtil;
 import proguard.util.StringMatcher;
 import proguard.util.kotlin.KotlinUnsupportedVersionChecker;
 import proguard.util.kotlin.asserter.KotlinMetadataVerifier;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 
 /**
  * Tool for shrinking, optimizing, obfuscating, and preverifying Java classes.
@@ -221,6 +220,7 @@ public class ProGuard
                 configuration.obfuscate)
             {
                 expandPrimitiveArrayConstants();
+                normalizeStrings();
             }
 
             if (configuration.targetClassVersion != 0)
@@ -271,6 +271,11 @@ public class ProGuard
         }
     }
 
+    private void normalizeStrings() throws Exception {
+        passRunner.run(new StringNormalizer(),appView);
+
+    }
+
 
     /**
      * Checks the GPL.
@@ -297,9 +302,7 @@ public class ProGuard
      */
     private void printConfiguration() throws IOException
     {
-        PrintWriter pw = PrintWriterUtil.createPrintWriterOut(configuration.printConfiguration);
-
-        try (ConfigurationWriter configurationWriter = new ConfigurationWriter(pw))
+        try (ConfigurationWriter configurationWriter = new ConfigurationWriter(configuration.printConfiguration))
         {
             configurationWriter.write(configuration);
         }
@@ -355,11 +358,7 @@ public class ProGuard
         }
         passRunner.run(new Initializer(configuration), appView);
 
-        if (configuration.keepKotlinMetadata &&
-            configuration.enableKotlinAsserter)
-        {
-            passRunner.run(new KotlinMetadataVerifier(configuration), appView);
-        }
+        verifyKotlinMetadata();
     }
 
 
@@ -445,11 +444,7 @@ public class ProGuard
         // Perform the actual shrinking.
         passRunner.run(new Shrinker(configuration, afterOptimizer), appView);
 
-        if (configuration.keepKotlinMetadata &&
-            configuration.enableKotlinAsserter)
-        {
-            passRunner.run(new KotlinMetadataVerifier(configuration), appView);
-        }
+        verifyKotlinMetadata();
     }
 
 
@@ -513,11 +508,7 @@ public class ProGuard
         // Fix the Kotlin modules so the filename matches and the class names match.
         passRunner.run(new NameObfuscationReferenceFixer(configuration), appView);
 
-        if (configuration.keepKotlinMetadata &&
-            configuration.enableKotlinAsserter)
-        {
-            passRunner.run(new KotlinMetadataVerifier(configuration), appView);
-        }
+        verifyKotlinMetadata();
     }
 
 
@@ -529,6 +520,13 @@ public class ProGuard
         passRunner.run(new KotlinMetadataAdapter(), appView);
     }
 
+    private void verifyKotlinMetadata() throws Exception {
+        if (configuration.keepKotlinMetadata &&
+            configuration.enableKotlinAsserter)
+        {
+            passRunner.run(new KotlinMetadataVerifier(configuration), appView);
+        }
+    }
 
     /**
      * Expands primitive array constants back to traditional primitive array

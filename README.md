@@ -60,7 +60,6 @@ bytecode:
 The resulting applications and libraries are smaller and faster.
 
 ## ❓ Getting Help
-If you have **usage or general questions** please ask them in the <a href="https://community.guardsquare.com/?utm_source=github&utm_medium=site-link&utm_campaign=github-community">**Guardsquare Community**.</a>  
 Please use <a href="https://github.com/guardsquare/proguard/issues">**the issue tracker**</a> to report actual **bugs 🐛, crashes**, etc.
 <br />
 <br />
@@ -80,7 +79,7 @@ bin/proguard.sh <options...>
 or on Windows:
 
 ```
-bin\proguard <options...>
+bin\proguard.bat <options...>
 ```
 
 Typically, you'll put most options in a configuration file (say,
@@ -92,10 +91,10 @@ bin/proguard.sh @myconfig.pro
 or on Windows:
 
 ```
-bin\proguard @myconfig.pro
+bin\proguard.bat @myconfig.pro
 ```
 
-All available options are described in the [Configuration section](../configuration/usage.md).
+All available options are described in the [configuration section of the manual](https://www.guardsquare.com/manual/configuration/usage).
 
 ### Gradle Task
 
@@ -109,7 +108,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.guardsquare:proguard-gradle:7.1.0'
+        classpath 'com.guardsquare:proguard-gradle:7.8.2'
     }
 }
 ```
@@ -139,7 +138,7 @@ tasks.register('proguard', ProGuardTask) {
 ```
 
 The embedded configuration is much like a standard ProGuard
-configuration. You can find more details on the [Gradle setup page](setup/gradle.md#proguard).
+configuration. You can find more details on the [Gradle setup page](https://www.guardsquare.com/manual/setup/gradle).
 
 ## ✨ Features
 
@@ -188,12 +187,12 @@ You can publish the artifacts to your local Maven repository using:
 ## 🤝 Contributing
 
 Contributions, issues and feature requests are welcome in both projects.
-Feel free to check the [issues](issues) page and the [contributing
+Feel free to check the [issues](https://github.com/Guardsquare/proguard/issues) page and the [contributing
 guide](CONTRIBUTING.md) if you would like to contribute.
 
 ## 📝 License
 
-Copyright (c) 2002-2022 [Guardsquare NV](https://www.guardsquare.com/).
+Copyright (c) 2002-2025 [Guardsquare NV](https://www.guardsquare.com/).
 ProGuard is released under the [GNU General Public License, version
 2](LICENSE), with [exceptions granted to a number of
 projects](docs/md/manual/license/gplexception.md).

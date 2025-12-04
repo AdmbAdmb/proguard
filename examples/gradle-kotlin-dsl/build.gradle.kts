@@ -1,10 +1,11 @@
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
         google()
     }
     dependencies {
-        classpath("com.guardsquare:proguard-gradle:7.3.0")
+        classpath("com.guardsquare:proguard-gradle:7.8.2")
     }
 }
 
@@ -22,13 +23,13 @@ dependencies {
 }
 
 application {
-    mainClassName = "gradlekotlindsl.App"
+    mainClass = "gradlekotlindsl.App"
 }
 
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = application.mainClassName
+        attributes["Main-Class"] = application.mainClass
     }
 }
 

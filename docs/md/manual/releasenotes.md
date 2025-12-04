@@ -1,3 +1,122 @@
+## Version 7.8.2 
+
+### Bugfixes 
+
+- Fix regression in marking of interface constants (#508).
+
+## Version 7.8.1 
+
+### Bugfixes 
+
+- Prevent `java.lang.IncompatibleClassChangeError` when shrinking is enabled and sealed interfaces are used (#501).
+- Prevent `java.lang.ClassCastException` when inlining (#505).
+
+## Version 7.8
+
+### Kotlin support
+
+- Add support for Kotlin 2.2.
+
+### Java support
+
+- Add support for Java 25. (#481)
+
+## Version 7.7
+
+### Java support
+
+- Add support for Java 24. (#458)
+
+### Bugfixes
+
+- Prevent `IllegalArgumentException` when strings longer than 65535 bytes are present in the application (#267).
+- Prevent `StackOverflowException` when processing a pattern match switch (#444).
+
+### Improved
+
+- Improve processing time in apps where a large number of linked methods are present.
+
+## Version 7.6.1
+
+### Bugfixes
+
+- Fix backporting default interface method parameter annotations. (#451)
+- Prevent `Value in slot <n> is empty` exception during processing time by no longer applying lower slot replacement by default. It can be enabled again with the `optimization.enable.slot.replacement` system property.
+
+## Version 7.6
+
+### Java support
+
+- Add support for Java 23. (#387)
+
+### Improved
+
+- Improve obfuscation dictionary name performance with large dictionaries. (#413)
+
+### Bugfixes
+
+- Prevent unknown enum value for `KmVersionRequirementVersionKind` exception when processing code compiled with an outdated Kotlin version. 
+- ReTrace: Fix separation of multiple frames with a newline. (#432)
+
+## Version 7.5.0
+
+### Kotlin support
+
+- Add support for Kotlin 2.0. (#376)
+
+### Java support
+
+- Add support for Java 22. (#387)
+
+### Bugfixes
+
+- Prevent unwanted name collision leading to missing methods in Kotlin DefaultImpls classes.
+- Prevent `ParseException` when consumer rules contain `-maximumremovedandroidloglevel` rules.
+
+## Version 7.4.2
+
+### Bugfixes
+
+- Fix potential access issues when backporting.
+- Fix potential NoClassDefFoundError when using type specialization optimization. (#373)
+- Improve processing of Kotlin metadata flags to prevent unnecessary null checks for consumers of protected library artifacts.
+- Prevent potential `StackGeneralizationException` during optimization when processing methods with many arguments.
+
+### Added
+
+- `ProGuardTask` support for Gradle configuration cache. (#254)
+
+## Version 7.4.1
+
+### Bugfixes
+
+- Fix inadvertent closing of System.out when printing configuration. (#365)
+
+### Added
+
+- Support for parsing of `<clinit>` methods without specifying the return type in class specifications.
+
+## Version 7.4
+
+### Java support
+
+- Add support for Java 21. (#331)
+
+### Kotlin support
+
+- Add support for Kotlin 1.9.
+
+### Bugfixes
+
+- Fix "NoClassDefFoundError: Failed resolution of: Lorg/apache/logging/log4j/LogManager" when using GSON optimization or `-addconfigurationdebugging`. (#326)
+- Don't drop Record attribute for records with no components. (proguard-core#118)
+- Fix potential duplication class when name obfuscating Kotlin multi-file facades.
+- Do not inline interface methods during optimization to avoid compilation errors during output writing due to an interface method being made package visible.
+
+### Added
+
+- Support parsing of wildcard `*` when used as a field type or method return type in class specifications.
+
 ## Version 7.3.2
 
 ### Java support

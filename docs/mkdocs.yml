@@ -77,7 +77,8 @@ nav:
 - Building:        manual/building.md
 - Setup:
     - Standalone:          manual/setup/standalone.md
-    - Gradle:              manual/setup/gradle.md
+    - Android Gradle:      manual/setup/gradleplugin.md
+    - Java/Kotlin Gradle:  manual/setup/gradle.md
     - Ant Task:            manual/setup/ant.md
 - Configuration:
     - Usage:           manual/configuration/usage.md
@@ -90,7 +91,6 @@ nav:
 - Tools:
     - ReTrace:         manual/tools/retrace.md
     - Playground:      manual/tools/playground.md
-    - AppSweep:        manual/tools/appsweep.md
 - Troubleshooting:
     - Overview:        manual/troubleshooting/troubleshooting.md
     - Limitations:     manual/troubleshooting/limitations.md

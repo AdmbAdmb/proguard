@@ -50,7 +50,8 @@ public class ConfigurationWriter implements AutoCloseable
 
 
     private final PrintWriter writer;
-    private       File        baseDir;
+    private       File        configurationFile;
+    private       String      baseDirName;
 
 
     /**
@@ -60,7 +61,11 @@ public class ConfigurationWriter implements AutoCloseable
     {
         this(PrintWriterUtil.createPrintWriterOut(configurationFile));
 
-        baseDir = configurationFile.getParentFile();
+        this.configurationFile = configurationFile;
+        if (configurationFile.getParentFile() != null)
+        {
+            baseDirName = configurationFile.getParentFile().getAbsolutePath() + File.separator;
+        }
     }
 
 
@@ -79,7 +84,7 @@ public class ConfigurationWriter implements AutoCloseable
     @Override
     public void close() throws IOException
     {
-        PrintWriterUtil.closePrintWriter(baseDir, writer);
+        PrintWriterUtil.closePrintWriter(configurationFile, writer);
     }
 
 
@@ -799,13 +804,9 @@ public class ConfigurationWriter implements AutoCloseable
         String fileName = file.getAbsolutePath();
 
         // See if we can convert the file name into a relative file name.
-        if (baseDir != null)
+        if (baseDirName != null && fileName.startsWith(baseDirName))
         {
-            String baseDirName = baseDir.getAbsolutePath() + File.separator;
-            if (fileName.startsWith(baseDirName))
-            {
-                fileName = fileName.substring(baseDirName.length());
-            }
+            fileName = fileName.substring(baseDirName.length());
         }
 
         return quotedString(fileName);
@@ -819,6 +820,7 @@ public class ConfigurationWriter implements AutoCloseable
     {
         return string.length()     == 0 ||
                string.indexOf(' ') >= 0 ||
+               string.indexOf('#') >= 0 ||
                string.indexOf('@') >= 0 ||
                string.indexOf('{') >= 0 ||
                string.indexOf('}') >= 0 ||
@@ -827,7 +829,7 @@ public class ConfigurationWriter implements AutoCloseable
                string.indexOf(':') >= 0 ||
                string.indexOf(';') >= 0 ||
                string.indexOf(',') >= 0  ? ("'" + string + "'") :
-                                           (      string      );
+            (      string      );
     }
 
 

@@ -1886,9 +1886,10 @@ implements   ClassVisitor,
                 markAsUsed(kotlinPropertyMetadata.receiverType);
                 markAsUsed(kotlinPropertyMetadata.typeParameters);
                 markAsUsed(kotlinPropertyMetadata.setterParameters);
+                markAsUsed(kotlinPropertyMetadata.setterParameter);
                 markAsUsed(kotlinPropertyMetadata.type);
 
-                if (kotlinPropertyMetadata.flags.common.hasAnnotations &&
+                if (kotlinPropertyMetadata.flags.hasAnnotations &&
                     kotlinPropertyMetadata.syntheticMethodForAnnotations != null)
                 {
                     // Annotations are placed on a synthetic method (e.g. myProperty$annotations())
@@ -1971,23 +1972,28 @@ implements   ClassVisitor,
         {
             visitAnyFunction(clazz, kotlinDeclarationContainerMetadata, kotlinFunctionMetadata);
 
-            // Non-abstract functions in interfaces should have default implementations, so keep it if the
-            // user kept the original function.
-            if (isUsed(kotlinFunctionMetadata))
-            {
-                if (kotlinDeclarationContainerMetadata.k == KotlinConstants.METADATA_KIND_CLASS &&
-                    ((KotlinClassKindMetadata)kotlinDeclarationContainerMetadata).flags.isInterface &&
-                    !kotlinFunctionMetadata.flags.modality.isAbstract &&
-                    (kotlinFunctionMetadata.referencedMethod.getProcessingFlags() & ProcessingFlags.DONT_SHRINK) != 0)
-                {
-                    kotlinFunctionMetadata.referencedDefaultImplementationMethodAccept(
-                        new MultiMemberVisitor(
-                            ClassUsageMarker.this,
-                            new MemberToClassVisitor(ClassUsageMarker.this)
-                        )
-                    );
-                }
+            boolean isInterface =
+                kotlinDeclarationContainerMetadata.k == KotlinConstants.METADATA_KIND_CLASS
+                    && ((KotlinClassKindMetadata) kotlinDeclarationContainerMetadata).flags.isInterface
+                    && !kotlinFunctionMetadata.flags.modality.isAbstract;
+
+            if (isUsed(kotlinFunctionMetadata)
+                && isInterface
+                && (kotlinFunctionMetadata.referencedMethod.getProcessingFlags()
+                        & ProcessingFlags.DONT_SHRINK)
+                    != 0) {
+                kotlinFunctionMetadata.referencedDefaultImplementationMethodAccept(
+                   new MultiMemberVisitor(
+                       ClassUsageMarker.this, new MemberToClassVisitor(ClassUsageMarker.this)));
             }
+
+            // If a default implementation is called directly,
+            // the interface should be marked as used as well.
+            if (kotlinFunctionMetadata.referencedDefaultImplementationMethod != null
+                && isInterface
+                && isUsed(kotlinFunctionMetadata.referencedDefaultImplementationMethod)) {
+                kotlinFunctionMetadata.referencedMethodAccept(ClassUsageMarker.this);
+            } 
         }
 
         // Implementations for KotlinTypeAliasVisitor.
@@ -2063,7 +2069,10 @@ implements   ClassVisitor,
                 else if (kotlinTypeMetadata.aliasName != null && !isUsed(kotlinTypeMetadata.referencedTypeAlias))
                 {
                     markAsUsed(kotlinTypeMetadata.referencedTypeAlias);
-                    kotlinTypeMetadata.referencedTypeAlias.accept(null, null, this);
+                    kotlinTypeMetadata.referencedTypeAlias.accept(
+                            kotlinTypeMetadata.referencedTypeAlias.referencedDeclarationContainer.ownerReferencedClass,
+                            kotlinTypeMetadata.referencedTypeAlias.referencedDeclarationContainer,
+                            this);
                 }
 
                 markAsUsed(kotlinTypeMetadata.typeArguments);

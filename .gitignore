@@ -6,3 +6,5 @@ build
 local.properties
 /lib/
 docs/html
+.kotlin
+.DS_Store

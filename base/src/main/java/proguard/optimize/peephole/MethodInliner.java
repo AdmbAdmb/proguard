@@ -40,6 +40,8 @@ import proguard.util.ProcessingFlags;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Stack;
 
 /**
@@ -70,8 +72,9 @@ implements            AttributeVisitor,
     protected static final int MAXIMUM_RESULTING_CODE_LENGTH_JME   = Integer.parseInt(System.getProperty("maximum.resulting.code.length", "2000"));
     protected static final int MAXIMUM_RESULTING_CODE_LENGTH_JVM   = 65535;
 
-    static final int METHOD_DUMMY_START_LINE_NUMBER = 0;
-    static final int INLINED_METHOD_END_LINE_NUMBER = -1;
+    static final int        METHOD_DUMMY_START_LINE_NUMBER   = 0;
+    public static final int INLINED_METHOD_END_LINE_NUMBER   = -1;
+    public static final int INLINED_METHOD_START_LINE_NUMBER = -2;
 
     private static final Logger logger = LogManager.getLogger(MethodInliner.class);
 
@@ -94,23 +97,23 @@ implements            AttributeVisitor,
                                                                  new MethodInvocationMarker());
     private final StackSizeComputer     stackSizeComputer      = new StackSizeComputer();
 
-    private ProgramClass       targetClass;
-    private ProgramMethod      targetMethod;
-    private ConstantAdder      constantAdder;
-    private ExceptionInfoAdder exceptionInfoAdder;
-    private int                estimatedResultingCodeLength;
-    private boolean            inlining;
-    private Stack              inliningMethods              = new Stack();
-    private boolean            emptyInvokingStack;
-    private boolean            coveredByCatchAllHandler;
-    private int                exceptionInfoCount;
-    private int                uninitializedObjectCount;
-    private int                variableOffset;
-    private boolean            inlined;
-    private boolean            inlinedAny;
-    private boolean            copiedLineNumbers;
-    private String             source;
-    private int                minimumLineNumberIndex;
+    private ProgramClass                     targetClass;
+    private ProgramMethod                    targetMethod;
+    private ConstantAdder                    constantAdder;
+    private ExceptionInfoAdder               exceptionInfoAdder;
+    private int                              estimatedResultingCodeLength;
+    private boolean                          inlining;
+    private Stack                            inliningMethods              = new Stack();
+    private boolean                          emptyInvokingStack;
+    private boolean                          coveredByCatchAllHandler;
+    private int                              exceptionInfoCount;
+    private int                              uninitializedObjectCount;
+    private int                              variableOffset;
+    private boolean                          inlined;
+    private boolean                          inlinedAny;
+    private boolean                          copiedLineNumbers;
+    private final Deque<LineNumberInfoBlock> sourceBlock                 = new ArrayDeque<>();
+    private int                              minimumLineNumberIndex;
 
 
     /**
@@ -322,15 +325,6 @@ implements            AttributeVisitor,
 
     public void visitLineNumberTableAttribute(Clazz clazz, Method method, CodeAttribute codeAttribute, LineNumberTableAttribute lineNumberTableAttribute)
     {
-        // Remember the source if we're inlining a method.
-        source = inlining ?
-            clazz.getName()                                 + '.' +
-            method.getName(clazz)                           +
-            method.getDescriptor(clazz)                     + ':' +
-            lineNumberTableAttribute.getLowestLineNumber()  + ':' +
-            lineNumberTableAttribute.getHighestLineNumber() :
-            null;
-
         // Insert all line numbers, possibly partly before previously inserted
         // line numbers.
         lineNumberTableAttribute.lineNumbersAccept(clazz, method, codeAttribute, this);
@@ -452,39 +446,61 @@ implements            AttributeVisitor,
 
         codeAttribute.attributesAccept(clazz, method, this);
 
+        // Add a marker at the start of the method. The LineNumberLinearizer relies on this to detect
+        // inlined blocks.
+        if (inlining)
+        {
+            LineNumberTableAttribute lineNumberTableAttribute =
+                    (LineNumberTableAttribute) codeAttribute.getAttribute(clazz, Attribute.LINE_NUMBER_TABLE);
+            int lowest = 0;
+            int highest = 0;
+            if (lineNumberTableAttribute != null)
+            {
+                lowest = lineNumberTableAttribute.getLowestLineNumber();
+                highest = lineNumberTableAttribute.getHighestLineNumber();
+            }
+
+            StructuredLineNumberInfo.Block block =
+                    new StructuredLineNumberInfo.Block(
+                            ProGuardOrigin.INLINED,
+                            clazz.getName() + '.' + method.getName(clazz) + method.getDescriptor(clazz),
+                            lowest,
+                            highest);
+            sourceBlock.push(block);
+
+            // Insert a start marker.
+            LineNumberInfo startLineNumberInfo = block.line(0, INLINED_METHOD_START_LINE_NUMBER);
+            minimumLineNumberIndex =
+                    codeAttributeComposer.insertLineNumber(minimumLineNumberIndex, startLineNumberInfo) + 1;
+        }
+
+        codeAttribute.attributesAccept(clazz, method, this);
+
         // Make sure we at least have some entry at the start of the method.
         if (!copiedLineNumbers)
         {
-            String source = inlining ?
-                clazz.getName()             + '.' +
-                method.getName(clazz)       +
-                method.getDescriptor(clazz) +
-                ":0:0" :
-                null;
-
+            LineNumberInfo line =
+                    inlining
+                            ? sourceBlock.peekLast().line(0, METHOD_DUMMY_START_LINE_NUMBER)
+                            : new LineNumberInfo(0, METHOD_DUMMY_START_LINE_NUMBER);
             minimumLineNumberIndex =
-                codeAttributeComposer.insertLineNumber(minimumLineNumberIndex,
-                    new ExtendedLineNumberInfo(0,
-                                               METHOD_DUMMY_START_LINE_NUMBER,
-                                               source)) + 1;
+                    codeAttributeComposer.insertLineNumber(minimumLineNumberIndex, line) + 1;
         }
 
-        // Add a marker at the end of an inlined method.
-        // The marker will be corrected in LineNumberLinearizer,
-        // so it points to the line of the enclosing method.
+        // Add a marker at the end of an inlined method. The marker will be corrected in
+        // LineNumberLinearizer, so it points to the line of the enclosing method.
         if (inlining)
         {
             String source =
-                clazz.getName()             + '.' +
-                method.getName(clazz)       +
-                method.getDescriptor(clazz) +
-                ":0:0";
+                    clazz.getName() + '.' + method.getName(clazz) + method.getDescriptor(clazz) + ":0:0";
 
             minimumLineNumberIndex =
-                codeAttributeComposer.insertLineNumber(minimumLineNumberIndex,
-                    new ExtendedLineNumberInfo(codeAttribute.u4codeLength,
-                                               INLINED_METHOD_END_LINE_NUMBER,
-                                               source)) + 1;
+                    codeAttributeComposer.insertLineNumber(
+                            minimumLineNumberIndex,
+                            sourceBlock
+                                    .pop()
+                                    .line(codeAttribute.u4codeLength, INLINED_METHOD_END_LINE_NUMBER))
+                            + 1;
         }
 
         codeAttributeComposer.endCodeFragment();
@@ -652,6 +668,15 @@ implements            AttributeVisitor,
                             AccessConstants.STATIC  |
                             AccessConstants.FINAL)) != 0                                       &&
 
+            DEBUG("Interface?")                                                                   &&
+
+            // Methods in interfaces should only very rarely be inlined
+            // since this can potentially lead to other methods in the interface
+            // needing broadened visibility, which can lead to either compilation errors
+            // during output writing or various issues at runtime.
+            ((programClass.getAccessFlags() & AccessConstants.INTERFACE) == 0 ||
+              canInlineMethodFromInterface(programClass, programMethod))                       &&
+
             DEBUG("Synchronized?")                                                                &&
 
             // Only inline the method if it is not synchronized, etc.
@@ -817,19 +842,30 @@ implements            AttributeVisitor,
     {
         try
         {
-            String newSource = lineNumberInfo.getSource() != null ?
-                lineNumberInfo.getSource() :
-                source;
+            LineNumberInfoBlock block = sourceBlock.peekLast();
+            boolean newSource = block != null;
+            boolean preserveSource = lineNumberInfo.getSource() != null;
 
-            LineNumberInfo newLineNumberInfo = newSource != null ?
-                new ExtendedLineNumberInfo(lineNumberInfo.u2startPC,
-                                           lineNumberInfo.u2lineNumber,
-                                           newSource) :
-                new LineNumberInfo(lineNumberInfo.u2startPC,
-                                   lineNumberInfo.u2lineNumber);
+            LineNumberInfo newLineNumberInfo;
+            if (preserveSource)
+            {
+                newLineNumberInfo =
+                        ((StructuredLineNumberInfo) lineNumberInfo)
+                                .getBlock(ProGuardOrigin.INLINED)
+                                .line(lineNumberInfo.u2startPC, lineNumberInfo.u2lineNumber);
+            }
+            else if (newSource)
+            {
+                newLineNumberInfo = block.line(lineNumberInfo.u2startPC, lineNumberInfo.u2lineNumber);
+            }
+            else
+            {
+                newLineNumberInfo =
+                        new LineNumberInfo(lineNumberInfo.u2startPC, lineNumberInfo.u2lineNumber);
+            }
 
             minimumLineNumberIndex =
-                codeAttributeComposer.insertLineNumber(minimumLineNumberIndex, newLineNumberInfo) + 1;
+                    codeAttributeComposer.insertLineNumber(minimumLineNumberIndex, newLineNumberInfo) + 1;
         }
         catch (IllegalArgumentException e)
         {
@@ -889,6 +925,17 @@ implements            AttributeVisitor,
                returnChar == TypeConstants.SHORT;
     }
 
+    /**
+     * We only inline methods from interfaces if both of these conditions hold:
+     * - The class that references the method is the interface itself.
+     * - The method is private.
+     */
+    private boolean canInlineMethodFromInterface(ProgramClass sourceClass, ProgramMethod sourceMethod)
+    {
+        return
+            sourceClass.equals(targetClass) &&
+            (sourceMethod.getAccessFlags() & AccessConstants.PRIVATE) != 0;
+    }
 
     /**
      * Indicates whether this method should be inlined. Subclasses can overwrite
