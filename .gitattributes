@@ -1,2 +1,2 @@
 gradlew -text
-gradlew.bat -text
+gradlew.bat -textTty
