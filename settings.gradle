@@ -1,4 +1,4 @@
-pluginManagement {
+AdmbpluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.id == 'com.github.johnrengelman.shadow') {
